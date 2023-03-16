@@ -7,7 +7,12 @@ import 'dart:io';
 
 class CustomVideoPlayer extends StatefulWidget {
   final XFile video; // 선택한 동영상을 저장할 변수
-  const CustomVideoPlayer({required this.video, Key? key}) : super(key: key);
+  final GestureTapCallback onNewVideoPressed;
+
+  // constructor
+  const CustomVideoPlayer({
+    required this.video, required this.onNewVideoPressed, Key? key
+  }) : super(key: key);
 
   @override
   State<CustomVideoPlayer> createState() => _CustomVideoPlayerState();
@@ -15,6 +20,17 @@ class CustomVideoPlayer extends StatefulWidget {
 
 class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
   VideoPlayerController? videoController;
+
+  bool showControls = false;
+
+  @override
+  void didUpdateWidget(covariant CustomVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if(oldWidget.video.path == widget.video.path) {
+      initializeController();
+    }
+  }
 
   @override
   void initState() {
@@ -56,56 +72,89 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
         child: CircularProgressIndicator(),
       );
     }
-    return AspectRatio(
-      aspectRatio: videoController!.value.aspectRatio,
-      child: Stack(
-        children: [
-          VideoPlayer(
-            videoController!,
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            left: 0,
-            child: Slider(
-              onChanged: (double val) {
-                videoController!.seekTo(
-                  Duration(seconds: val.toInt()),
-                );
-              },
-              value: videoController!.value.position.inSeconds.toDouble(),
-              min: 0,
-              max: videoController!.value.duration.inSeconds.toDouble(),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          showControls = !showControls;
+        });
+      },
+      child: AspectRatio(
+        aspectRatio: videoController!.value.aspectRatio,
+        child: Stack(
+          children: [
+            VideoPlayer(
+              videoController!,
             ),
-          ),
-          Align(
-            alignment: Alignment.topRight,
-            child: CustomIconButton(
-              onPressed: () {},
-              iconData: Icons.photo_camera_back,
+            if(showControls)
+              Container(
+                color: Colors.black.withOpacity(0.5),
+              ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              left: 0,
+
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
+                  children: [
+                    renderTimeTextFromDuration(videoController!.value.position),
+                    Expanded(
+                      child: Slider(
+                        onChanged: (double val) {
+                          videoController!.seekTo(Duration(seconds: val.toInt()));
+                        },
+                        value: videoController!.value.position.inSeconds.toDouble(),
+                        min: 0,
+                        max: videoController!.value.duration.inSeconds.toDouble(),
+                      ),
+                    ),
+                    renderTimeTextFromDuration(videoController!.value.duration),
+                  ],
+                ),
+              ),
             ),
-          ),
-          Align(
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                CustomIconButton(
-                  onPressed: onReversePressed,
-                  iconData: Icons.rotate_left,
+            if(showControls)
+              Align(
+                alignment: Alignment.topRight,
+                child: CustomIconButton(
+                  onPressed: widget.onNewVideoPressed,
+                  iconData: Icons.photo_camera_back,
                 ),
-                CustomIconButton(
-                  onPressed: onPlayPressed,
-                  iconData: videoController!.value.isPlaying? Icons.pause : Icons.play_arrow,
+              ),
+            if(showControls)
+              Align(
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    CustomIconButton(
+                      onPressed: onReversePressed,
+                      iconData: Icons.rotate_left,
+                    ),
+                    CustomIconButton(
+                      onPressed: onPlayPressed,
+                      iconData: videoController!.value.isPlaying? Icons.pause : Icons.play_arrow,
+                    ),
+                    CustomIconButton(
+                      onPressed: onForwardPressed,
+                      iconData: Icons.rotate_right,
+                    ),
+                  ],
                 ),
-                CustomIconButton(
-                  onPressed: onForwardPressed,
-                  iconData: Icons.rotate_right,
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget renderTimeTextFromDuration(Duration duration) {
+    return Text(
+      '${duration.inMinutes.toString().padLeft(2, '0')} : '
+      '${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+      style: TextStyle(
+        color: Colors.white,
       ),
     );
   }
